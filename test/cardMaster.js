@@ -32,10 +32,10 @@ contract('CardMaster', (accounts) => {
     }).then((name) => {
       // nameが正しいか
       assert.equal(web3.toAscii(name).replace(/\u0000/g, ''), 'test-name');
-      return card.issued();
-    }).then((issued) => {
-      // issuedが正しいか
-      assert.equal(web3.toDecimal(issued), 10);
+      return card.totalSupply();
+    }).then((totalSupply) => {
+      // totalSupplyが正しいか
+      assert.equal(web3.toDecimal(totalSupply), 10);
       return card.imageHash();
     }).then((imageHash) => {
       // imageHashが正しいか

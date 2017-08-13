@@ -4,9 +4,9 @@ import "./BuyOrder.sol";
 contract Card {
     // カード属性など
     bytes32 public name;
+    uint public totalSupply;
     bytes32 public imageHash;
     address public author;
-    uint public issued;
 
     // 誰が何枚持っているか
     mapping(address => uint) public owns;
@@ -26,10 +26,10 @@ contract Card {
         name = _name;
         // author = msg.sender; // カードのコントラクトになってしまう
         author = _author;
-        issued = _issued;
+        totalSupply = _issued;
         imageHash = _imageHash;
         addressList.push(author);
-        owns[author] = issued;
+        owns[author] = totalSupply;
     }
 
     /**
