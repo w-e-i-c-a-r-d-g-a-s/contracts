@@ -23,5 +23,6 @@ $ testrpc
 | Compile  | `$ truffle compile`  |
 | Migrate  | `$ truffle migrate`  |
 | Test     | `$ truffle test`     |
+| Test and Watch | `$ npm run watch`     |
 | Test with Coverage | `$ npm run cover`     |
 
