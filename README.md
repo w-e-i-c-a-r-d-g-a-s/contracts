@@ -1,5 +1,7 @@
 # Contracts
 
+With [Truffle Framework](http://truffleframework.com/) 🍄
+
 ## Installation
 
 To install [EthereumJS TestRPC](https://github.com/ethereumjs/testrpc).
@@ -21,3 +23,5 @@ $ testrpc
 | Compile  | `$ truffle compile`  |
 | Migrate  | `$ truffle migrate`  |
 | Test     | `$ truffle test`     |
+| Test with Coverage | `$ npm run cover`     |
+
