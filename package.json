@@ -5,9 +5,12 @@
   "license": "MIT",
   "watch": {
     "test": {
-      "patterns": [ "contracts", "test" ],
+      "patterns": [
+        "contracts",
+        "test"
+      ],
       "extensions": "sol,js",
-      "delay": 3000
+      "delay": 0
     }
   },
   "scripts": {
