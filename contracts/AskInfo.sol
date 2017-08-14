@@ -3,7 +3,7 @@ pragma solidity ^0.4.13;
 /**
  * 買い注文のContract
  */
-contract BuyOrder {
+contract AskInfo {
     address public buyer;
     uint public value;
     uint16 public quantity;
@@ -13,7 +13,7 @@ contract BuyOrder {
 
     event Debug_i(uint);
 
-    function BuyOrder(address _buyer, uint16 _quantity, uint _price) payable {
+    function AskInfo(address _buyer, uint16 _quantity, uint256 _price) payable {
         buyer = _buyer;
         quantity = _quantity;
         price = _price;
@@ -21,9 +21,14 @@ contract BuyOrder {
     }
 
     /**
+     * Fallback Function
+     */
+    function() payable {}
+
+    /**
      * 販売.
      */
-    function sell(address seller, uint16 _quantity) payable {
+    function accept(address seller, uint16 _quantity) payable {
         require(!ended);
         //提示カード枚数以下
         require(quantity >= _quantity);
@@ -33,7 +38,7 @@ contract BuyOrder {
 
         quantity -= _quantity;
         //TODO:綺麗に割り切れない場合の救済
-        if(value == 0){
+        if (value == 0) {
             ended = true;
         }
     }
@@ -49,8 +54,4 @@ contract BuyOrder {
         ended = true;
     }
 
-    /**
-     * Fallback Function
-     */
-    function () payable { }
 }
