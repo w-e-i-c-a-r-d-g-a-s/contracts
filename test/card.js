@@ -5,7 +5,7 @@ const expectThrow = require('./helpers/expectThrow');
 const getGas = require('./helpers/getGas');
 
 const Card = artifacts.require("./Card.sol");
-const AskInfo = artifacts.require("./AskInfo.sol");
+const BidInfo = artifacts.require("./BidInfo.sol");
 
 contract('Card', (accounts) => {
   it("constructor", async () => {
@@ -71,29 +71,28 @@ contract('Card', (accounts) => {
     await expectThrow(card.deal(accounts[1], 10, { from: accounts[2]}));
   });
 
-  contract('Card#Bid', (accounts) => {
+  contract('Card#Ask', (accounts) => {
     // 売り注文発行したときの売り注文のリストが正しいか
-    it("testing 'getBidInfosCount'", async () => {
+    it("testing 'getAskInfosCount'", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
+      const num = await card.getAskInfosCount.call();
       // 売り注文は0
       assert.equal(num.toNumber(), 0);
       // 売り注文を発行
-      await card.bid(10, 1000);
+      await card.ask(10, 1000);
       // 売り注文が増える
-      const num1 = await card.getBidInfosCount.call();
+      const num1 = await card.getAskInfosCount.call();
       assert.equal(num1.toNumber(), 1);
     });
 
     // 売り注文発行したときの売り注文のデータが正しいか
-    it("testing 'bid'", async () => {
+    it("testing 'ask'", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
       // 売り注文を発行
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
 
-      const bidInfo = await card.bidInfos.call(0);
-      const [ from, quantity, price, active ] = bidInfo;
+      const askInfo = await card.askInfos.call(0);
+      const [ from, quantity, price, active ] = askInfo;
       assert.equal(from, accounts[0]);
       assert.equal(quantity.toNumber(), 10);
       assert.equal(price.toNumber(), toWei(0.1));
@@ -101,17 +100,16 @@ contract('Card', (accounts) => {
     });
 
     // 売り注文を買う OKケース
-    it("testing 'acceptBid' OK", async () => {
+    it("testing 'acceptAsk' OK", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
       // 売り注文を発行 10枚 1枚あたり0.1ETH
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
       // Ether額
       const ownerBalance = web3.eth.getBalance(accounts[0]);
       const visitorBalance = web3.eth.getBalance(accounts[1]);
 
       // 売り注文を買う
-      const tx = await card.acceptBid(0, {from: accounts[1], value: toWei(1)});
+      const tx = await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
       const gas = getGas(tx);
 
       // Ether額が変化しているか
@@ -132,24 +130,23 @@ contract('Card', (accounts) => {
       assert.equal(balance0.toNumber(), 90);
       assert.equal(balance1.toNumber(), 10);
       // デアクティブになっている
-      const bidInfo = await card.bidInfos.call(0);
-      assert.isNotOk(bidInfo[3]);
+      const askInfo = await card.askInfos.call(0);
+      assert.isNotOk(askInfo[3]);
     });
 
     // 売り注文を買う OKケース オーナーになっている場合
-    it("testing 'acceptBid' OK already owner", async () => {
+    it("testing 'acceptAsk' OK already owner", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
       // 売り注文を発行 10枚 1枚あたり0.1ETH
-      await card.bid(10, toWei(0.1));
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
       // 売り注文を買う
-      await card.acceptBid(0, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
       let ownerList = await card.getOwnerList.call();
       assert.lengthOf(ownerList, 2);
       assert.equal(ownerList[1], accounts[1]);
       // もう一度同じユーザが買う
-      await card.acceptBid(1, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(1, {from: accounts[1], value: toWei(1)});
       ownerList = await card.getOwnerList.call();
       assert.lengthOf(ownerList, 2);
       assert.equal(ownerList[1], accounts[1]);
@@ -161,42 +158,40 @@ contract('Card', (accounts) => {
       assert.equal(balance1.toNumber(), 20);
     });
 
-    // 売り注文を買う NGケース 有効でないbid
-    it("testing 'acceptBid' NG", async () => {
+    // 売り注文を買う NGケース 有効でないask
+    it("testing 'acceptAsk' NG", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
       // 売り注文を発行 10枚 1枚あたり0.1ETH
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
       // 売り注文を買う
-      await card.acceptBid(0, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
       // デアクティブになっている
-      const bidInfo = await card.bidInfos.call(0);
-      assert.isNotOk(bidInfo[3]);
+      const askInfo = await card.askInfos.call(0);
+      assert.isNotOk(askInfo[3]);
       // 無効な売り注文を買う
-      await expectThrow(card.acceptBid(0, {from: accounts[1], value: toWei(1)}));
+      await expectThrow(card.acceptAsk(0, {from: accounts[1], value: toWei(1)}));
     });
 
     // 売り注文を買う NGケース 入力金額が正しくない
-    it("testing 'acceptBid' NG2", async () => {
+    it("testing 'acceptAsk' NG2", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
-      const num = await card.getBidInfosCount.call();
       // 売り注文を発行 10枚 1枚あたり0.1ETH
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
       // 間違ったEtherで売り注文を買う
-      await expectThrow(card.acceptBid(0, {from: accounts[1], value: toWei(1.1)}));
+      await expectThrow(card.acceptAsk(0, {from: accounts[1], value: toWei(1.1)}));
     });
 
-    it("testing 'closeBid' OK", async () => {
+    it("testing 'closeAsk' OK", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
       // 売り注文を発行 10枚 1枚あたり0.1ETH
-      await card.bid(10, toWei(0.1));
+      await card.ask(10, toWei(0.1));
       // 売り注文が増える
-      const num1 = await card.getBidInfosCount.call();
+      const num1 = await card.getAskInfosCount.call();
       assert.equal(num1.toNumber(), 1);
-      await card.closeBid(0);
+      await card.closeAsk(0);
 
-      const bidInfo = await card.bidInfos.call(0);
-      const [ from, quantity, price, active ] = bidInfo;
+      const askInfo = await card.askInfos.call(0);
+      const [ from, quantity, price, active ] = askInfo;
       // 0埋めされた値が入ってる
       assert.equal(from, 0);
       assert.equal(quantity.toNumber(), 0);
@@ -205,13 +200,13 @@ contract('Card', (accounts) => {
     });
   });
 
-  contract('Card#Ask', (accounts) => {
+  contract('Card#Bid', (accounts) => {
     // 買い注文を発行
     it("testing 'ask' OK", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
       const buyerBalance =  web3.eth.getBalance(accounts[1]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      const tx = await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      const tx = await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
       const gas = getGas(tx);
 
       // 買い注文を発行したアカウントのetherが変化しているか
@@ -220,46 +215,46 @@ contract('Card', (accounts) => {
 
 
       // リストに追加されている
-      const askInfosSize = await card.getAskInfosCount.call();
-      assert.equal(askInfosSize, 1);
+      const bidInfosSize = await card.getBidInfosCount.call();
+      assert.equal(bidInfosSize, 1);
 
-      const askInfoAddr = await card.askInfos.call(0);
+      const bidInfoAddr = await card.bidInfos.call(0);
       // contractがethを保持している
-      assert.equal(web3.eth.getBalance(askInfoAddr), toWei(1));
-      // askInfoを確認
-      const askInfo = await AskInfo.at(askInfoAddr);
+      assert.equal(web3.eth.getBalance(bidInfoAddr), toWei(1));
+      // bidInfoを確認
+      const bidInfo = await BidInfo.at(bidInfoAddr);
       // valueが正しいか
-      const value = await askInfo.value();
+      const value = await bidInfo.value();
       assert.equal(value.toNumber(), toWei(1));
       // buyerが正しいか
-      const buyer = await askInfo.buyer();
+      const buyer = await bidInfo.buyer();
       assert.equal(buyer, accounts[1]);
       // quantityが正しいか
-      const quantity = await askInfo.quantity();
+      const quantity = await bidInfo.quantity();
       assert.equal(quantity.toNumber(), 1);
       // priceが正しいか
-      const price = await askInfo.price();
+      const price = await bidInfo.price();
       assert.equal(price.toNumber(), toWei(1));
       // endedが正しいか
-      const ended = await askInfo.ended();
+      const ended = await bidInfo.ended();
       assert.isFalse(ended);
     });
 
     // 買い注文を発行 金額が正しくない場合
-    it("testing 'ask' NG", async () => {
+    it("testing 'bid' NG", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await expectThrow(card.ask(1, 1, { from: accounts[1], value: toWei(1.1) }));
+      await expectThrow(card.bid(1, 1, { from: accounts[1], value: toWei(1.1) }));
     });
 
     // 買い注文に対して売る
-    it("testing 'acceptAsk' OK", async () => {
+    it("testing 'acceptBid' OK", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
 
       const buyerBalance =  web3.eth.getBalance(accounts[1]);
 
       // 2枚 1枚あたり1Eth の買い注文を作成
-      let tx = await card.ask(2, 1, { from: accounts[1], value: toWei(2) });
+      let tx = await card.bid(2, 1, { from: accounts[1], value: toWei(2) });
       let gas = getGas(tx);
 
       // buyerのetherが減る
@@ -268,7 +263,7 @@ contract('Card', (accounts) => {
       const sellerBalance =  web3.eth.getBalance(accounts[0]);
 
       // 2枚売る
-      tx = await card.acceptAsk(0, 2);
+      tx = await card.acceptBid(0, 2);
       gas = getGas(tx);
 
       const sellerBalance1 =  web3.eth.getBalance(accounts[0]);
@@ -284,38 +279,38 @@ contract('Card', (accounts) => {
       const balance1 = await card.balanceOf.call(ownerList[1]);
       assert.equal(balance1.toNumber(), 2);
 
-      // askInfoの内容が変化している
-      const askInfoAddr = await card.askInfos.call(0);
+      // bidInfoの内容が変化している
+      const bidInfoAddr = await card.bidInfos.call(0);
       // contractがethを保持していない
-      assert.equal(web3.eth.getBalance(askInfoAddr), 0);
-      const askInfo = await AskInfo.at(askInfoAddr);
+      assert.equal(web3.eth.getBalance(bidInfoAddr), 0);
+      const bidInfo = await BidInfo.at(bidInfoAddr);
       // valueが正しいか
-      const value = await askInfo.value();
+      const value = await bidInfo.value();
       assert.equal(value.toNumber(), toWei(0));
       // quantityが正しいか
-      const quantity = await askInfo.quantity();
+      const quantity = await bidInfo.quantity();
       assert.equal(quantity.toNumber(), 0);
       // endedが正しいか
-      const ended = await askInfo.ended();
+      const ended = await bidInfo.ended();
       assert.isTrue(ended);
 
     });
 
     // 買い注文に対して売る
-    it("testing 'acceptAsk' OK2", async () => {
+    it("testing 'acceptBid' OK2", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
       // 2枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(2, 1, { from: accounts[1], value: toWei(2) });
+      await card.bid(2, 1, { from: accounts[1], value: toWei(2) });
 
-      // askInfoの内容が変化している
-      let askInfoAddr = await card.askInfos.call(0);
-      let askInfo = await AskInfo.at(askInfoAddr);
+      // bidInfoの内容が変化している
+      let bidInfoAddr = await card.bidInfos.call(0);
+      let bidInfo = await BidInfo.at(bidInfoAddr);
       // valueが正しいか
-      let value = await askInfo.value();
+      let value = await bidInfo.value();
       assert.equal(value.toNumber(), toWei(2));
 
       // 1枚売る
-      await card.acceptAsk(0, 1);
+      await card.acceptBid(0, 1);
 
       // 所有数が変化している
       const ownerList = await card.getOwnerList();
@@ -325,83 +320,83 @@ contract('Card', (accounts) => {
       const balance1 = await card.balanceOf.call(ownerList[1]);
       assert.equal(balance1.toNumber(), 1);
 
-      // askInfoの内容が変化している
-      askInfoAddr = await card.askInfos.call(0);
-      askInfo = await AskInfo.at(askInfoAddr);
+      // bidInfoの内容が変化している
+      bidInfoAddr = await card.bidInfos.call(0);
+      bidInfo = await BidInfo.at(bidInfoAddr);
       // valueが正しいか
-      value = await askInfo.value();
+      value = await bidInfo.value();
       assert.equal(value.toNumber(), toWei(1));
       // quantityが正しいか
-      const quantity = await askInfo.quantity();
+      const quantity = await bidInfo.quantity();
       assert.equal(quantity.toNumber(), 1);
       // endedが正しいか
-      const ended = await askInfo.ended();
+      const ended = await bidInfo.ended();
       assert.isFalse(ended);
     });
 
     // 買い注文に対して売る 所有数を超えて売ろうとする
-    it("testing 'acceptAsk' NG. exceeds card number limit", async () => {
+    it("testing 'acceptBid' NG. exceeds card number limit", async () => {
       const card = await Card.new('cardName', 1, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
       // 2枚売ろうとする
-      await expectThrow(card.acceptAsk(0, 2));
+      await expectThrow(card.acceptBid(0, 2));
     });
 
     // 買い注文に対して売る endしている買い注文
-    it("testing 'acceptAsk' NG. ask is ended", async () => {
+    it("testing 'acceptBid' NG. bid is ended", async () => {
       const card = await Card.new('cardName', 10, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
       // 1枚売る
-      await card.acceptAsk(0, 1);
+      await card.acceptBid(0, 1);
 
       // endedがtrueとなっているか
-      const askInfoAddr = await card.askInfos.call(0);
-      const askInfo = await AskInfo.at(askInfoAddr);
-      const ended = await askInfo.ended();
+      const bidInfoAddr = await card.bidInfos.call(0);
+      const bidInfo = await BidInfo.at(bidInfoAddr);
+      const ended = await bidInfo.ended();
       assert.isTrue(ended);
       // 更に売る
-      await expectThrow(card.acceptAsk(0, 1));
+      await expectThrow(card.acceptBid(0, 1));
     });
 
     // 買い注文に対して売る 提示しているカード以上売ろうとする
-    it("testing 'acceptAsk' NG. exceeds asking card number limit", async () => {
+    it("testing 'acceptBid' NG. exceeds biding card number limit", async () => {
       const card = await Card.new('cardName', 10, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
       // 2枚売ろうとする
-      await expectThrow(card.acceptAsk(0, 2));
+      await expectThrow(card.acceptBid(0, 2));
     });
 
     // 買い注文を閉じる
-    it("testing 'closeAsk' OK", async () => {
+    it("testing 'closeBid' OK", async () => {
       const card = await Card.new('cardName', 10, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
 
-      const askInfoAddr = await card.askInfos.call(0);
-      const askInfo = await AskInfo.at(askInfoAddr);
+      const bidInfoAddr = await card.bidInfos.call(0);
+      const bidInfo = await BidInfo.at(bidInfoAddr);
       // closeする
-      await askInfo.close({ from: accounts[1] });
+      await bidInfo.close({ from: accounts[1] });
 
-      // askInfoが変化する
-      const value = await askInfo.value();
+      // bidInfoが変化する
+      const value = await bidInfo.value();
       assert.equal(value.toNumber(), 0);
-      const ended = await askInfo.ended();
+      const ended = await bidInfo.ended();
       assert.isTrue(ended);
     });
 
     // 買い注文を閉じる
-    it("testing 'closeAsk' NG. execute not a buyer", async () => {
+    it("testing 'closeBid' NG. execute not a buyer", async () => {
       const card = await Card.new('cardName', 10, 'imageHash123', accounts[0]);
       // 1枚 1枚あたり1Eth の買い注文を作成
-      await card.ask(1, 1, { from: accounts[1], value: toWei(1) });
+      await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
 
-      const askInfoAddr = await card.askInfos.call(0);
-      const askInfo = await AskInfo.at(askInfoAddr);
+      const bidInfoAddr = await card.bidInfos.call(0);
+      const bidInfo = await BidInfo.at(bidInfoAddr);
       // buyer以外がcloseしようとする
-      await expectThrow(askInfo.close({ from: accounts[0] }));
+      await expectThrow(bidInfo.close({ from: accounts[0] }));
     });
   });
 

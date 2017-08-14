@@ -1,5 +1,5 @@
 pragma solidity ^0.4.13;
-import "./AskInfo.sol";
+import "./BidInfo.sol";
 
 contract Card {
     // カード属性など
@@ -13,18 +13,18 @@ contract Card {
     // [Tips]動的配列はpublicで参照できない
 
     // 売り注文
-    struct BidInfo {
+    struct AskInfo {
         address from;
         uint quantity;
         uint price; // weiで指定
         bool active;
     }
-    BidInfo[] public bidInfos;
+    AskInfo[] public askInfos;
 
     /**
      * 買い注文リスト
      */
-    AskInfo[] public askInfos;
+    BidInfo[] public bidInfos;
 
     event Debug(string _val);
     event Debugi(uint _val);
@@ -73,32 +73,32 @@ contract Card {
      * @param quantity 売りたい枚数
      * @param price １枚あたりの価格(wei)
      */
-    function bid(uint quantity, uint price) {
-        bidInfos.push(BidInfo(msg.sender, quantity, price, true));
+    function ask(uint quantity, uint price) {
+        askInfos.push(AskInfo(msg.sender, quantity, price, true));
     }
 
     /**
      * @dev 売り注文の数を返す
      * @return （無効なもの含む）売り注文の数
      */
-    function getBidInfosCount() constant returns (uint){
-        return bidInfos.length;
+    function getAskInfosCount() constant returns (uint){
+        return askInfos.length;
     }
 
     /**
      * @dev 売り注文に対して買う
      * @param idx 売り注文のインデックス
      */
-    function acceptBid(uint idx) payable {
-        BidInfo storage bidInfo = bidInfos[idx];
+    function acceptAsk(uint idx) payable {
+        AskInfo storage askInfo = askInfos[idx];
 
-        address from = bidInfo.from;
+        address from = askInfo.from;
         address to = msg.sender;
-        uint quantity = bidInfo.quantity;
-        uint price = bidInfo.price;
+        uint quantity = askInfo.quantity;
+        uint price = askInfo.price;
 
         //有効チェック
-        require(bidInfo.active);
+        require(askInfo.active);
         //入力金額の正当性チェック
         require(msg.value == quantity * price);
 
@@ -108,7 +108,7 @@ contract Card {
         }
         balanceOf[from] -= quantity;
         balanceOf[to] += quantity;
-        bidInfo.active = false;
+        askInfo.active = false;
         from.transfer(this.balance);
     }
 
@@ -126,37 +126,37 @@ contract Card {
     /**
      * 売り注文を終了する
      */
-    function closeBid(uint idx) {
-        delete bidInfos[idx];
+    function closeAsk(uint idx) {
+        delete askInfos[idx];
     }
 
     /**
      *  買い注文リストの要素数を返す
      */
-    function getAskInfosCount() constant returns (uint){
-        return askInfos.length;
+    function getBidInfosCount() constant returns (uint){
+        return bidInfos.length;
     }
 
     /**
      * 買い注文作成
      */
-    function ask(uint16 _quantity, uint256 _etherPrice) payable {
+    function bid(uint16 _quantity, uint256 _etherPrice) payable {
         //TODO:本番ではetherではなくweiを引数に渡す
         uint256 weiPrice = _etherPrice * 1 ether;
         require(msg.value == _quantity * weiPrice);
-        AskInfo askInfo = new AskInfo(msg.sender, _quantity, weiPrice);
-        askInfo.transfer(msg.value);
-        askInfos.push(askInfo);
+        BidInfo bidInfo = new BidInfo(msg.sender, _quantity, weiPrice);
+        bidInfo.transfer(msg.value);
+        bidInfos.push(bidInfo);
     }
 
     /**
      * 買い注文に対して売る.
      */
-    function acceptAsk(uint idx, uint16 quantity) payable {
+    function acceptBid(uint idx, uint16 quantity) payable {
         address seller = msg.sender;
-        address buyer = askInfos[idx].buyer();
+        address buyer = bidInfos[idx].buyer();
         require(balanceOf[seller] >= quantity);
-        askInfos[idx].accept(seller, quantity);
+        bidInfos[idx].accept(seller, quantity);
         balanceOf[seller] = balanceOf[seller] - quantity;
         balanceOf[buyer] = balanceOf[buyer] + quantity;
         if (!isAlreadyOwner(buyer)) {

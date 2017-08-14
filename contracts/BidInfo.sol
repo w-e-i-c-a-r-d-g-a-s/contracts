@@ -3,7 +3,7 @@ pragma solidity ^0.4.13;
 /**
  * 買い注文のContract
  */
-contract AskInfo {
+contract BidInfo {
     address public buyer;
     uint public value;
     uint16 public quantity;
@@ -13,7 +13,7 @@ contract AskInfo {
 
     event Debug_i(uint);
 
-    function AskInfo(address _buyer, uint16 _quantity, uint256 _price) payable {
+    function BidInfo(address _buyer, uint16 _quantity, uint256 _price) payable {
         buyer = _buyer;
         quantity = _quantity;
         price = _price;
