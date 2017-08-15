@@ -8,13 +8,16 @@ contract CardMaster {
     // アドレスを管理する配列
     address[] private cardAddresses;
 
+    event CreateCard(address cardAddress);
     /**
      * CardのContractを配列とマップに追加
      */
     function addCard(bytes32 _name, uint _totalSupply, bytes32 _imageHash) {
         Card card = new Card(_name, _totalSupply, _imageHash, msg.sender);
-        cardAddresses.push(address(card));
-        cards[address(card)] = card;
+        address cardAddress = address(card);
+        cardAddresses.push(cardAddress);
+        cards[cardAddress] = card;
+        CreateCard(cardAddress);
     }
 
     /**

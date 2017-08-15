@@ -14,10 +14,13 @@ contract('CardMaster', (accounts) => {
 
   it('testing "addCard"', async () => {
     const cardMaster = await CardMaster.deployed();
-    const addr = await cardMaster.addCard('test-name', 10, 'hash123');
+    const tx = await cardMaster.addCard('test-name', 10, 'hash123');
+    const createdCardAddress = `0x${tx.receipt.logs[0].data.slice(26)}`;
     const cardAddresses = await cardMaster.getCardAddresses.call();
     assert.lengthOf(cardAddresses, 1);
     const cardAddress = await cardMaster.getCard.call(cardAddresses[0])
+    // eventで出力されたカードアドレスが実際のカードアドレスと同じか
+    assert.equal(createdCardAddress, cardAddress);
     // Get new Card contract
     const card = await Card.at(cardAddress);
     // nameが正しいか
