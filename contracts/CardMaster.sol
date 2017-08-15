@@ -11,12 +11,10 @@ contract CardMaster {
     /**
      * CardのContractを配列とマップに追加
      */
-    function addCard(bytes32 _name, uint _totalSupply, bytes32 _imageHash) returns (address) {
+    function addCard(bytes32 _name, uint _totalSupply, bytes32 _imageHash) {
         Card card = new Card(_name, _totalSupply, _imageHash, msg.sender);
         cardAddresses.push(address(card));
         cards[address(card)] = card;
-        // 履歴用にアドレスを返す
-        return address(card);
     }
 
     /**
