@@ -7,6 +7,12 @@ contract Card {
     uint public totalSupply;
     bytes32 public imageHash;
     address public author;
+    // 総取引額
+    uint private totalPrice;
+    // 取引回数
+    uint private transactionCount;
+    // 時価
+    uint public currentMarketPrice;
 
     mapping(address => uint) public balanceOf; // 誰が何枚持っているか
     address[] private ownerList;             // カード所有者のアドレスリスト
@@ -29,6 +35,8 @@ contract Card {
     event Debug(string _val);
     event Debugi(uint _val);
     event Debug(address c);
+
+    event ChangeMarkPrice(uint transactionCount, uint marketPrice, int diff, bool isNegative);
 
     /**
      * 指定数のカードを所有しているユーザーのみ
@@ -110,6 +118,8 @@ contract Card {
         balanceOf[to] += quantity;
         askInfo.active = false;
         from.transfer(this.balance);
+        // 時価の算出
+        calcPrice(price);
     }
 
     function isAlreadyOwner(address addr) returns (bool){
@@ -139,6 +149,8 @@ contract Card {
 
     /**
      * 買い注文作成
+     * @param _quantity 枚数
+     * @param _etherPrice 購入額
      */
     function bid(uint16 _quantity, uint256 _etherPrice) payable {
         //TODO:本番ではetherではなくweiを引数に渡す
@@ -151,10 +163,13 @@ contract Card {
 
     /**
      * 買い注文に対して売る.
+     * @param idx BidInfoのインデックス
+     * @param quantity 枚数
      */
     function acceptBid(uint idx, uint16 quantity) payable {
         address seller = msg.sender;
-        address buyer = bidInfos[idx].buyer();
+        BidInfo bidInfo = bidInfos[idx];
+        address buyer = bidInfo.buyer();
         require(balanceOf[seller] >= quantity);
         bidInfos[idx].accept(seller, quantity);
         balanceOf[seller] = balanceOf[seller] - quantity;
@@ -163,6 +178,26 @@ contract Card {
             // 初オーナー
             ownerList.push(buyer);
         }
+        // 時価の算出
+        calcPrice(bidInfo.price());
+    }
+
+    /**
+     * カードの価値を計算し出力
+     * @param price 1枚あたりの取引額(wei)
+     */
+    function calcPrice(uint price) private {
+        // 取引額の算出
+        totalPrice += price;
+        transactionCount++;
+        uint marketPrice = totalPrice / transactionCount;
+        int diff = int(marketPrice - currentMarketPrice);
+        bool isNegative = diff < 0;
+        if(isNegative){
+            diff *= -1;
+        }
+        currentMarketPrice = marketPrice;
+        ChangeMarkPrice(transactionCount, currentMarketPrice, diff, isNegative);
     }
 
 }
