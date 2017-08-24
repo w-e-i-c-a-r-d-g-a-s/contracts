@@ -114,7 +114,7 @@ contract('Card', (accounts) => {
       const visitorBalance = web3.eth.getBalance(accounts[1]);
 
       // 売り注文を買う
-      const tx = await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
+      const tx = await card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)});
       const gas = getGas(tx);
 
       // Ether額が変化しているか
@@ -139,6 +139,43 @@ contract('Card', (accounts) => {
       assert.isNotOk(askInfo[3]);
     });
 
+    // 売り注文を買う OKケース（数量を指定して買う）
+    it("testing 'acceptAsk' OK2 number specified", async () => {
+      const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+      // 売り注文を発行 10枚 1枚あたり0.1ETH
+      await card.ask(10, toWei(0.1));
+      // Ether額
+      const ownerBalance = web3.eth.getBalance(accounts[0]);
+      const visitorBalance = web3.eth.getBalance(accounts[1]);
+
+      // 売り注文を買う
+      const tx = await card.acceptAsk(0, 5, {from: accounts[1], value: toWei(0.5)});
+      const gas = getGas(tx);
+
+      // Ether額が変化しているか
+      const ownerBalance1 = web3.eth.getBalance(accounts[0]);
+      const visitorBalance1 = web3.eth.getBalance(accounts[1]);
+      // 取引Eth分増えている
+      assert.equal(ownerBalance1.minus(ownerBalance).toNumber(), toWei(0.5));
+      // 取引Eth + fee 分減っている
+      assert.equal(visitorBalance.minus(visitorBalance1).toNumber(), toWei(0.5) + gas);
+
+      // オーナーリストに追加されている
+      const ownerList = await card.getOwnerList.call();
+      assert.lengthOf(ownerList, 2);
+      assert.equal(ownerList[1], accounts[1]);
+      // 所有数が変化している
+      const balance0 = await card.balanceOf.call(ownerList[0]);
+      const balance1 = await card.balanceOf.call(ownerList[1]);
+      assert.equal(balance0.toNumber(), 95);
+      assert.equal(balance1.toNumber(), 5);
+      // デアクティブになっていない
+      const askInfo = await card.askInfos.call(0);
+      assert.isTrue(askInfo[3]);
+      // 枚数が変わっている
+      assert.equal(askInfo[1].toNumber(), 5);
+    });
+
     // 売り注文を買う OKケース オーナーになっている場合
     it("testing 'acceptAsk' OK already owner", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
@@ -146,12 +183,12 @@ contract('Card', (accounts) => {
       await card.ask(10, toWei(0.1));
       await card.ask(10, toWei(0.1));
       // 売り注文を買う
-      await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)});
       let ownerList = await card.getOwnerList.call();
       assert.lengthOf(ownerList, 2);
       assert.equal(ownerList[1], accounts[1]);
       // もう一度同じユーザが買う
-      await card.acceptAsk(1, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(1, 10, {from: accounts[1], value: toWei(1)});
       ownerList = await card.getOwnerList.call();
       assert.lengthOf(ownerList, 2);
       assert.equal(ownerList[1], accounts[1]);
@@ -163,18 +200,32 @@ contract('Card', (accounts) => {
       assert.equal(balance1.toNumber(), 20);
     });
 
-    // 売り注文を買う NGケース 有効でないask
-    it("testing 'acceptAsk' NG", async () => {
+    // 売り注文を買う NGケース 有効でないask（購入済み）
+    it("testing 'acceptAsk' NG1-1", async () => {
       const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
       // 売り注文を発行 10枚 1枚あたり0.1ETH
       await card.ask(10, toWei(0.1));
       // 売り注文を買う
-      await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
+      await card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)});
       // デアクティブになっている
       const askInfo = await card.askInfos.call(0);
       assert.isNotOk(askInfo[3]);
       // 無効な売り注文を買う
-      await expectThrow(card.acceptAsk(0, {from: accounts[1], value: toWei(1)}));
+      await expectThrow(card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)}));
+    });
+
+    // 売り注文を買う NGケース 有効でないask（closeされた）
+    it("testing 'acceptAsk' NG1-2", async () => {
+      const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+      // 売り注文を発行 10枚 1枚あたり0.1ETH
+      await card.ask(10, toWei(0.1));
+      // 売り注文を買う
+      await card.closeAsk(0);
+      // デアクティブになっている
+      const askInfo = await card.askInfos.call(0);
+      assert.isNotOk(askInfo[3]);
+      // 無効な売り注文を買う
+      await expectThrow(card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)}));
     });
 
     // 売り注文を買う NGケース 入力金額が正しくない
@@ -183,7 +234,16 @@ contract('Card', (accounts) => {
       // 売り注文を発行 10枚 1枚あたり0.1ETH
       await card.ask(10, toWei(0.1));
       // 間違ったEtherで売り注文を買う
-      await expectThrow(card.acceptAsk(0, {from: accounts[1], value: toWei(1.1)}));
+      await expectThrow(card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1.1)}));
+    });
+
+    // 売り注文を買う NGケース 枚数が多い
+    it("testing 'acceptAsk' NG3 too many quantity", async () => {
+      const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+      // 売り注文を発行 10枚 1枚あたり0.1ETH
+      await card.ask(5, toWei(0.1));
+      // 間違ったEtherで売り注文を買う
+      await expectThrow(card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)}));
     });
 
     it("testing 'closeAsk' OK", async () => {
@@ -413,7 +473,7 @@ contract('Card', (accounts) => {
 
       // 売り注文を発行し買う 10枚 1枚あたり0.1ETH
       await card.ask(10, toWei(0.1));
-      const tx = await card.acceptAsk(0, {from: accounts[1], value: toWei(1)});
+      const tx = await card.acceptAsk(0, 10, {from: accounts[1], value: toWei(1)});
       // const gas = getGas(tx);
 
       // 時価が更新される
@@ -433,7 +493,7 @@ contract('Card', (accounts) => {
       // 売り注文を発行 5枚 1枚あたり0.581ETH
       await card.ask(3, toWei(0.581));
       await card.ask(1, toWei(0.11));
-      let tx = await card.acceptAsk(0, {from: accounts[1], value: toWei(0.1)});
+      let tx = await card.acceptAsk(0, 1, {from: accounts[1], value: toWei(0.1)});
       // イベントの値が正しいか
       let eventValues = tx.receipt.logs[0].data.slice(2).match(/.{1,64}/g);
       assert.equal(toDecimal(`0x${eventValues[0]}`), 1);
@@ -445,7 +505,7 @@ contract('Card', (accounts) => {
       currentMP = await card.currentMarketPrice.call();
       assert.equal(currentMP.toNumber(), toWei(0.1));
 
-      tx = await card.acceptAsk(1, {from: accounts[1], value: toWei(0.615)});
+      tx = await card.acceptAsk(1, 5, {from: accounts[1], value: toWei(0.615)});
       // イベントの値が正しいか
       eventValues = tx.receipt.logs[0].data.slice(2).match(/.{1,64}/g);
       assert.equal(toDecimal(`0x${eventValues[0]}`), 2);
@@ -456,7 +516,7 @@ contract('Card', (accounts) => {
       currentMP = await card.currentMarketPrice.call();
       assert.equal(currentMP.toNumber(), toWei(0.1115));
 
-      tx = await card.acceptAsk(2, {from: accounts[2], value: toWei(1.743)});
+      tx = await card.acceptAsk(2, 3, {from: accounts[2], value: toWei(1.743)});
       // イベントの値が正しいか
       eventValues = tx.receipt.logs[0].data.slice(2).match(/.{1,64}/g);
       assert.equal(toDecimal(`0x${eventValues[0]}`), 3);
@@ -467,7 +527,7 @@ contract('Card', (accounts) => {
       assert.equal(currentMP.toNumber(), toWei(0.268));
 
       // 時価が下がる
-      tx = await card.acceptAsk(3, {from: accounts[2], value: toWei(0.11)});
+      tx = await card.acceptAsk(3, 1, {from: accounts[2], value: toWei(0.11)});
       // イベントの値が正しいか
       eventValues = tx.receipt.logs[0].data.slice(2).match(/.{1,64}/g);
       assert.equal(toDecimal(`0x${eventValues[0]}`), 4);

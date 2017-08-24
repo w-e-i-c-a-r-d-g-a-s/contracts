@@ -96,30 +96,33 @@ contract Card {
     /**
      * @dev 売り注文に対して買う
      * @param idx 売り注文のインデックス
+     * @param _quantity 枚数
      */
-    function acceptAsk(uint idx) payable {
+    function acceptAsk(uint idx, uint16 _quantity) payable {
         AskInfo storage askInfo = askInfos[idx];
-
-        address from = askInfo.from;
-        address to = msg.sender;
-        uint quantity = askInfo.quantity;
-        uint price = askInfo.price;
 
         //有効チェック
         require(askInfo.active);
-        //入力金額の正当性チェック
-        require(msg.value == quantity * price);
+        //金額・枚数の正当性チェック
+        require(askInfo.quantity >= _quantity);
+        require(msg.value == _quantity * askInfo.price);
 
+        address from = askInfo.from;
+        address to = msg.sender;
+
+        askInfo.quantity -= _quantity;
+        balanceOf[from] -= _quantity;
+        balanceOf[to] += _quantity;
+        from.transfer(this.balance);
         if (!isAlreadyOwner(to)) {
             // 初オーナー
             ownerList.push(to);
         }
-        balanceOf[from] -= quantity;
-        balanceOf[to] += quantity;
-        askInfo.active = false;
-        from.transfer(this.balance);
+        if(askInfo.quantity == 0){
+          askInfo.active = false;
+        }
         // 時価の算出
-        calcPrice(price);
+        calcPrice(askInfo.price);
     }
 
     function isAlreadyOwner(address addr) returns (bool){
