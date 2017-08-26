@@ -3,8 +3,6 @@ import "./Card.sol";
 
 // カードマスター
 contract CardMaster {
-    // CardのContractのリスト
-    mapping(address => Card) private cards;
     // アドレスを管理する配列
     address[] private cardAddresses;
 
@@ -14,10 +12,8 @@ contract CardMaster {
      */
     function addCard(bytes32 _name, uint _totalSupply, bytes32 _imageHash) {
         Card card = new Card(_name, _totalSupply, _imageHash, msg.sender);
-        address cardAddress = address(card);
-        cardAddresses.push(cardAddress);
-        cards[cardAddress] = card;
-        CreateCard(cardAddress);
+        cardAddresses.push(address(card));
+        CreateCard(address(card));
     }
 
     /**
@@ -31,7 +27,14 @@ contract CardMaster {
      * カードを取得
      */
     function getCard(address cardAddress) constant returns (Card) {
-        Card c = cards[cardAddress];
-        return c;
+        return Card(cardAddress);
+    }
+
+    /**
+     * カードを設定
+     * マイグレーション用
+     */
+    function setCard(address cardAddress) {
+        cardAddresses.push(cardAddress);
     }
 }

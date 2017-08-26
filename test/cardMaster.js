@@ -1,6 +1,8 @@
 const Web3 = require('web3');
 const web3 = new Web3();
 const toAscii = require('./helpers/toAscii');
+const getGas = require('./helpers/getGas');
+const toEther = require('./helpers/toEther');
 
 var CardMaster = artifacts.require("./CardMaster.sol");
 var Card = artifacts.require("./Card.sol");
@@ -35,5 +37,25 @@ contract('CardMaster', (accounts) => {
     // authorが正しいか
     const author = await card.author();
     assert.equal(author, accounts[0]);
+  });
+
+  it('testing "setCard"', async () => {
+    // カードマスターを生成
+    const cardMaster = await CardMaster.deployed();
+    // カードを追加
+    const tx = await cardMaster.addCard('test-name', 10, 'hash123');
+    const cardAddresses = await cardMaster.getCardAddresses.call();
+    const cardAddress = await cardMaster.getCard.call(cardAddresses[0])
+    const card = await Card.at(cardAddress);
+    // 別のカードマスターを生成
+    const cardMaster2 = await CardMaster.deployed();
+    const cardAddresses2 = await cardMaster2.getCardAddresses.call();
+    const cardAddress2 = await cardMaster2.setCard(cardAddress);
+
+    const cardAddressNew = await cardMaster2.getCard.call(cardAddresses2[0])
+    const _addr = await cardMaster2.getCard.call(cardAddressNew);
+    const cardNew = await Card.at(_addr);
+    assert.equal(cardAddressNew, cardAddress);
+    assert.equal(toAscii(await cardNew.name()), 'test-name');
   });
 });
