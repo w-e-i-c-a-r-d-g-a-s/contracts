@@ -30,7 +30,7 @@ contract Card {
     /**
      * 買い注文リスト
      */
-    BidInfo[] public bidInfos;
+    address[] public bidInfos;
 
     event Debug(string _val);
     event Debugi(uint _val);
@@ -161,7 +161,7 @@ contract Card {
         require(msg.value == _quantity * weiPrice);
         BidInfo bidInfo = new BidInfo(msg.sender, _quantity, weiPrice);
         bidInfo.transfer(msg.value);
-        bidInfos.push(bidInfo);
+        bidInfos.push(address(bidInfo));
     }
 
     /**
@@ -171,10 +171,10 @@ contract Card {
      */
     function acceptBid(uint idx, uint16 quantity) payable {
         address seller = msg.sender;
-        BidInfo bidInfo = bidInfos[idx];
+        BidInfo bidInfo = BidInfo(bidInfos[idx]);
         address buyer = bidInfo.buyer();
         require(balanceOf[seller] >= quantity);
-        bidInfos[idx].accept(seller, quantity);
+        bidInfo.accept(seller, quantity);
         balanceOf[seller] = balanceOf[seller] - quantity;
         balanceOf[buyer] = balanceOf[buyer] + quantity;
         if (!isAlreadyOwner(buyer)) {
