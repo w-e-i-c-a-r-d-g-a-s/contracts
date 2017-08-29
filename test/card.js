@@ -1,14 +1,19 @@
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
 const toWei = require('./helpers/toWei');
+const toEther = require('./helpers/toEther');
 const toAscii = require('./helpers/toAscii');
 const toDecimal = require('./helpers/toDecimal');
 const toBool = require('./helpers/toBool');
 const expectThrow = require('./helpers/expectThrow');
 const getGas = require('./helpers/getGas');
+const txLog = require('./helpers/txLog');
 
 const Card = artifacts.require("./Card.sol");
 const BidInfo = artifacts.require("./BidInfo.sol");
+
+// デバッグログ用
+global.debug = false;
 
 contract('Card', (accounts) => {
   it("constructor", async () => {
@@ -273,11 +278,11 @@ contract('Card', (accounts) => {
       // 1枚 1枚あたり1Eth の買い注文を作成
       const tx = await card.bid(1, 1, { from: accounts[1], value: toWei(1) });
       const gas = getGas(tx);
+      txLog(tx, 'bid');
 
       // 買い注文を発行したアカウントのetherが変化しているか
       const buyerBalance1 = web3.eth.getBalance(accounts[1]);
       assert.equal(buyerBalance.minus(buyerBalance1).toNumber(), toWei(1) + gas);
-
 
       // リストに追加されている
       const bidInfosSize = await card.getBidInfosCount.call();
@@ -330,6 +335,8 @@ contract('Card', (accounts) => {
       // 2枚売る
       tx = await card.acceptBid(0, 2);
       gas = getGas(tx);
+      txLog(tx, 'acceptBid');
+      // console.log('acceptBid', gas);
 
       const sellerBalance1 =  web3.eth.getBalance(accounts[0]);
       // sellerのetherが増える
