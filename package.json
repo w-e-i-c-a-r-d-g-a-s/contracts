@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "watch": {
+  "watch":{
+    "compile":{
+      "patterns": [
+        "contracts"
+      ],
+      "extensions": "sol,js",
+      "delay": 0
+    },
     "test": {
       "patterns": [
         "contracts",
@@ -14,9 +21,11 @@
     }
   },
   "scripts": {
-    "start": "truffle compile --all && truffle migrate --reset && npm run watch",
+    "start": "truffle compile --all && truffle migrate --reset && npm run watch-test",
+    "compile": "truffle compile --all && truffle migrate --reset",
     "test" : "truffle test",
-    "watch": "npm-watch",
+    "watch": "npm-watch compile",
+    "watch-test": "npm-watch test",
     "cover": "solidity-coverage"
   },
   "dependencies": {
