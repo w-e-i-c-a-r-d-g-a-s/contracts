@@ -4,7 +4,7 @@ import "./BidInfo.sol";
 contract Card {
     // カード属性など
     bytes32 public name;
-    uint public totalSupply;
+    uint32 public totalSupply;
     bytes32 public imageHash;
     address public author;
     // 総取引額
@@ -18,35 +18,43 @@ contract Card {
     address[] private ownerList;             // カード所有者のアドレスリスト
     // [Tips]動的配列はpublicで参照できない
 
+    /**
+    * // key is wei
+    * 10000000000000000: [
+        *   {
+        *     from: '0x.....',
+        *     quentity: 2
+        *   },
+        *   {
+            *     from: '0x.....',
+            *     quentity: 4
+            *   }
+            * ]
+            */
     // 売り注文
     struct AskInfo {
         address from;
-        uint quantity;
-        uint price; // weiで指定
-        bool active;
+        uint32 quantity;
     }
-    AskInfo[] public askInfos;
+    mapping(uint128 => AskInfo[]) public askInfos__;
+    uint128[] private askInfoPrices;
 
     /**
-     * 買い注文リスト
-     */
+    * 買い注文リスト
+    */
     address[] public bidInfos;
-
-    event Debug(string _val);
-    event Debugi(uint _val);
-    event Debug(address c);
 
     event ChangeMarkPrice(uint transactionCount, uint marketPrice, int diff, bool isNegative);
 
     /**
-     * 指定数のカードを所有しているユーザーのみ
-     */
-    modifier onlyOwn(uint16 _quantity) { require(balanceOf[msg.sender] >= _quantity); _; }
+    * 指定数のカードを所有しているユーザーのみ
+    */
+    modifier onlyOwn(uint32 _quantity) { require(balanceOf[msg.sender] >= _quantity); _; }
 
     /**
-     * コンストラクタ
-     */
-    function Card(bytes32 _name, uint _totalSupply, bytes32 _imageHash, address _author){
+    * コンストラクタ
+    */
+    function Card(bytes32 _name, uint32 _totalSupply, bytes32 _imageHash, address _author){
         name = _name;
         author = _author;
         totalSupply = _totalSupply;
@@ -56,16 +64,16 @@ contract Card {
     }
 
     /**
-     * ownerのアドレスの配列取得
-     */
+    * ownerのアドレスの配列取得
+    */
     function getOwnerList() constant returns (address[]) {
         return ownerList;
     }
 
     /**
-     * カードを送る
-     */
-    function deal(address to, uint16 quantity) onlyOwn (quantity) {
+    * カードを送る
+    */
+    function deal(address to, uint32 quantity) onlyOwn (quantity) {
         address from = msg.sender;
 
         if (!isAlreadyOwner(to)) {
@@ -77,52 +85,86 @@ contract Card {
     }
 
     /**
-     * @dev カードの売り注文を作成
-     * @param quantity 売りたい枚数
-     * @param price １枚あたりの価格(wei)
-     */
-    function ask(uint quantity, uint price) {
-        askInfos.push(AskInfo(msg.sender, quantity, price, true));
+    * @dev カードの売り注文を作成
+    * @param _quantity 売りたい枚数
+    * @param _price １枚あたりの価格(wei)
+    */
+    function ask(uint32 _quantity, uint128 _price) {
+        askInfos__[_price].push(AskInfo(msg.sender, _quantity));
+        askInfoPrices.push(_price);
     }
 
     /**
-     * @dev 売り注文の数を返す
-     * @return （無効なもの含む）売り注文の数
-     */
-    function getAskInfosCount() constant returns (uint){
-        return askInfos.length;
+    * @dev 売り注文の金額のリストを返す
+    * @return （無効なもの含む）金額別売り注文の金額のリスト
+    */
+    function getAskInfoPrices() constant returns (uint128[]){
+        return askInfoPrices;
+    }
+
+    /**
+    * @dev 金額別売り注文の数を返す
+    * @return （無効なもの含む）金額別売り注文の数
+    */
+    function getAskInfoPricesCount() constant returns (uint){
+        return askInfoPrices.length;
     }
 
     /**
      * @dev 売り注文に対して買う
-     * @param idx 売り注文のインデックス
+     * @param _price 売り注文の金額
      * @param _quantity 枚数
      */
-    function acceptAsk(uint idx, uint16 _quantity) payable {
-        AskInfo storage askInfo = askInfos[idx];
-
-        //有効チェック
-        require(askInfo.active);
-        //金額・枚数の正当性チェック
-        require(askInfo.quantity >= _quantity);
-        require(msg.value == _quantity * askInfo.price);
-
-        address from = askInfo.from;
+    function acceptAsk(uint128 _price, uint32 _quantity) payable {
+        AskInfo[] storage _askInfos = askInfos__[_price];
+        if(_askInfos.length == 0){
+            revert();
+        }
         address to = msg.sender;
+        for(uint i = 0; i < _askInfos.length; i++){
+            AskInfo storage _askInfo = _askInfos[i];
 
-        askInfo.quantity -= _quantity;
-        balanceOf[from] -= _quantity;
-        balanceOf[to] += _quantity;
-        from.transfer(this.balance);
+            // TODO deleteしても古いデータがのこる
+            if(_askInfo.quantity == 0){
+                continue;
+            }
+
+            address from = _askInfo.from;
+            uint32 boughtNum = 0;
+            if(_askInfo.quantity > _quantity){
+                // 一部買う
+                boughtNum = _quantity;
+            }else{
+                // 全部買う
+                boughtNum = _askInfo.quantity;
+            }
+            _quantity -= _askInfo.quantity;
+            from.transfer(_price * boughtNum);
+            balanceOf[from] -= boughtNum;
+            balanceOf[to] += boughtNum;
+            _askInfo.quantity -= boughtNum;
+
+            // deleteしてもstructは残る
+            if(_askInfo.quantity == 0){
+                delete _askInfos[i];
+            }
+            // すべて支払った場合終了
+            if(this.balance == 0){
+                break;
+            }
+        }
+
+        // balanceが残っている場合は失敗
+        if(this.balance != 0){
+            revert();
+        }
+
         if (!isAlreadyOwner(to)) {
             // 初オーナー
             ownerList.push(to);
         }
-        if(askInfo.quantity == 0){
-          askInfo.active = false;
-        }
         // 時価の算出
-        calcPrice(askInfo.price);
+        calcPrice(_price);
     }
 
     function isAlreadyOwner(address addr) returns (bool){
@@ -137,24 +179,17 @@ contract Card {
     }
 
     /**
-     * 売り注文を終了する
-     */
-    function closeAsk(uint idx) {
-        delete askInfos[idx];
-    }
-
-    /**
-     *  買い注文リストの要素数を返す
-     */
+    *  買い注文リストの要素数を返す
+    */
     function getBidInfosCount() constant returns (uint){
         return bidInfos.length;
     }
 
     /**
-     * 買い注文作成
-     * @param _quantity 枚数
-     * @param _etherPrice 購入額
-     */
+    * 買い注文作成
+    * @param _quantity 枚数
+    * @param _etherPrice 購入額
+    */
     function bid(uint16 _quantity, uint256 _etherPrice) payable {
         //TODO:本番ではetherではなくweiを引数に渡す
         uint256 weiPrice = _etherPrice * 1 ether;
@@ -165,10 +200,10 @@ contract Card {
     }
 
     /**
-     * 買い注文に対して売る.
-     * @param idx BidInfoのインデックス
-     * @param quantity 枚数
-     */
+    * 買い注文に対して売る.
+    * @param idx BidInfoのインデックス
+    * @param quantity 枚数
+    */
     function acceptBid(uint idx, uint16 quantity) payable {
         address seller = msg.sender;
         BidInfo bidInfo = BidInfo(bidInfos[idx]);
@@ -186,9 +221,9 @@ contract Card {
     }
 
     /**
-     * カードの価値を計算し出力
-     * @param price 1枚あたりの取引額(wei)
-     */
+    * カードの価値を計算し出力
+    * @param price 1枚あたりの取引額(wei)
+    */
     function calcPrice(uint price) private {
         // 取引額の算出
         totalPrice += price;
