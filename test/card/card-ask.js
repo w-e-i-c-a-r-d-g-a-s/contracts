@@ -27,7 +27,7 @@ contract('Card#Ask', (accounts) => {
     await card.ask(10, toWei(0.1));
     // 生成された売り注文をチェック
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo = await card.askInfos__.call(askInfoPrices[0], 0);
+    const askInfo = await card.askInfos.call(askInfoPrices[0], 0);
     const [ from, quantity ] = askInfo;
     assert.equal(from, accounts[0]);
     assert.equal(quantity.toNumber(), 10);
@@ -42,8 +42,8 @@ contract('Card#Ask', (accounts) => {
     await card.ask(5, toWei(0.1));
     // 生成された売り注文をチェック
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo1 = await card.askInfos__.call(askInfoPrices[0], 0);
-    const askInfo2 = await card.askInfos__.call(askInfoPrices[0], 1);
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
+    const askInfo2 = await card.askInfos.call(askInfoPrices[0], 1);
 
     assert.equal(web3.toDecimal(askInfoPrices[0]), toWei(0.1));
 
@@ -67,8 +67,8 @@ contract('Card#Ask', (accounts) => {
     await card.ask(5, toWei(20000));
     // 生成された売り注文をチェック
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo1 = await card.askInfos__.call(askInfoPrices[0], 0);
-    const askInfo2 = await card.askInfos__.call(askInfoPrices[1], 0);
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
+    const askInfo2 = await card.askInfos.call(askInfoPrices[1], 0);
 
     assert.equal(web3.toDecimal(askInfoPrices[0]), toWei(0.1));
     assert.equal(web3.toDecimal(askInfoPrices[1]), toWei(20000));
@@ -114,7 +114,7 @@ contract('Card#Ask', (accounts) => {
     assert.equal(balance1.toNumber(), 10);
     // 0になっている
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo = await card.askInfos__.call(askInfoPrices[0], 0);
+    const askInfo = await card.askInfos.call(askInfoPrices[0], 0);
   });
 
   // 売り注文を買う OKケース（数量を指定して買う）
@@ -149,7 +149,7 @@ contract('Card#Ask', (accounts) => {
     assert.equal(balance1.toNumber(), 5);
 
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo = await card.askInfos__.call(askInfoPrices[0], 0);
+    const askInfo = await card.askInfos.call(askInfoPrices[0], 0);
     // 枚数が変わっている
     assert.equal(askInfo[1].toNumber(), 5);
   });
@@ -192,7 +192,7 @@ contract('Card#Ask', (accounts) => {
     await card.ask(2, toWei(0.1), {from: accounts[1]});
 
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo1 = await card.askInfos__.call(askInfoPrices[0], 2);
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 2);
     const [ from, quantity ] = askInfo1;
     assert.equal(from, accounts[1]);
     assert.equal(quantity.toNumber(), 2);
@@ -228,7 +228,7 @@ contract('Card#Ask', (accounts) => {
     await card.ask(2, toWei(0.1), {from: accounts[1]});
 
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo1 = await card.askInfos__.call(askInfoPrices[0], 3);
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 3);
     const [ from, quantity ] = askInfo1;
     assert.equal(from, accounts[1]);
     assert.equal(quantity.toNumber(), 2);
@@ -245,10 +245,10 @@ contract('Card#Ask', (accounts) => {
     assert.equal(balance2.toNumber(), 3);
 
     // 最後の売り注文が残っている状態である
-    const askInfo0_ = await card.askInfos__.call(askInfoPrices[0], 0);
-    const askInfo1_ = await card.askInfos__.call(askInfoPrices[0], 1);
-    const askInfo2_ = await card.askInfos__.call(askInfoPrices[0], 2);
-    const askInfo3_ = await card.askInfos__.call(askInfoPrices[0], 3);
+    const askInfo0_ = await card.askInfos.call(askInfoPrices[0], 0);
+    const askInfo1_ = await card.askInfos.call(askInfoPrices[0], 1);
+    const askInfo2_ = await card.askInfos.call(askInfoPrices[0], 2);
+    const askInfo3_ = await card.askInfos.call(askInfoPrices[0], 3);
     assert.equal(askInfo0_[0], 0x0);
     assert.equal(askInfo0_[1].toNumber(), 0);
     assert.equal(askInfo1_[0], 0x0);
@@ -286,7 +286,7 @@ contract('Card#Ask', (accounts) => {
     await card.acceptAsk(toWei(0.1), 10, {from: accounts[1], value: toWei(1)});
 
     const askInfoPrices = await card.getAskInfoPrices.call();
-    const askInfo1 = await card.askInfos__.call(askInfoPrices[0], 0);
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
     const [ from, quantity ] = askInfo1;
     // 販売枚数は0
     assert.equal(quantity, 0);

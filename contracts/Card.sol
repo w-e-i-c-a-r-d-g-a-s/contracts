@@ -36,7 +36,7 @@ contract Card {
         address from;
         uint32 quantity;
     }
-    mapping(uint128 => AskInfo[]) public askInfos__;
+    mapping(uint128 => AskInfo[]) public askInfos;
     uint128[] private askInfoPrices;
 
     /**
@@ -90,7 +90,7 @@ contract Card {
     * @param _price １枚あたりの価格(wei)
     */
     function ask(uint32 _quantity, uint128 _price) {
-        askInfos__[_price].push(AskInfo(msg.sender, _quantity));
+        askInfos[_price].push(AskInfo(msg.sender, _quantity));
         askInfoPrices.push(_price);
     }
 
@@ -116,7 +116,7 @@ contract Card {
      * @param _quantity 枚数
      */
     function acceptAsk(uint128 _price, uint32 _quantity) payable {
-        AskInfo[] storage _askInfos = askInfos__[_price];
+        AskInfo[] storage _askInfos = askInfos[_price];
         if(_askInfos.length == 0){
             revert();
         }
