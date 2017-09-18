@@ -36,8 +36,8 @@ contract Card {
         address from;
         uint32 quantity;
     }
-    mapping(uint128 => AskInfo[]) public askInfos;
-    uint128[] private askInfoPrices;
+    mapping(bytes16 => AskInfo[]) public askInfos;
+    bytes16[] private askInfoPrices;
 
     /**
      * 買い注文リスト
@@ -90,15 +90,15 @@ contract Card {
      * @param _price １枚あたりの価格(wei)
      */
     function ask(uint32 _quantity, uint128 _price) {
-        askInfos[_price].push(AskInfo(msg.sender, _quantity));
-        askInfoPrices.push(_price);
+        askInfos[bytes16(_price)].push(AskInfo(msg.sender, _quantity));
+        askInfoPrices.push(bytes16(_price));
     }
 
     /**
      * @dev 売り注文の金額のリストを返す
      * @return （無効なもの含む）金額別売り注文の金額のリスト
      */
-    function getAskInfoPrices() constant returns (uint128[]){
+    function getAskInfoPrices() constant returns (bytes16[]){
         return askInfoPrices;
     }
 
@@ -108,7 +108,7 @@ contract Card {
      * @return 指定の金額の売り注文数
      */
     function readAskInfoCount(uint128 _price) constant returns (uint) {
-        return askInfos[_price].length;
+        return askInfos[bytes16(_price)].length;
     }
 
     /**
@@ -118,7 +118,7 @@ contract Card {
      * @return 指定の金額の売り注文データ
      */
     function readAskInfo(uint128 _price, uint idx) constant returns (address from, uint32 quantity) {
-        return (askInfos[_price][idx].from, askInfos[_price][idx].quantity);
+        return (askInfos[bytes16(_price)][idx].from, askInfos[bytes16(_price)][idx].quantity);
     }
 
     /**
@@ -135,7 +135,7 @@ contract Card {
      * @param _quantity 枚数
      */
     function acceptAsk(uint128 _price, uint32 _quantity) payable {
-        AskInfo[] storage _askInfos = askInfos[_price];
+        AskInfo[] storage _askInfos = askInfos[bytes16(_price)];
         if(_askInfos.length == 0){
             revert();
         }
