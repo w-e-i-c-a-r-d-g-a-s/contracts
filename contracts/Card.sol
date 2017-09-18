@@ -19,18 +19,18 @@ contract Card {
     // [Tips]動的配列はpublicで参照できない
 
     /**
-    * // key is wei
-    * 10000000000000000: [
-        *   {
-        *     from: '0x.....',
-        *     quentity: 2
-        *   },
-        *   {
-            *     from: '0x.....',
-            *     quentity: 4
-            *   }
-            * ]
-            */
+     * // key is wei
+     * 10000000000000000: [
+     *   {
+     *     from: '0x.....',
+     *     quentity: 2
+     *   },
+     *   {
+     *     from: '0x.....',
+     *     quentity: 4
+     *   }
+     * ]
+     */
     // 売り注文
     struct AskInfo {
         address from;
@@ -40,20 +40,20 @@ contract Card {
     uint128[] private askInfoPrices;
 
     /**
-    * 買い注文リスト
-    */
+     * 買い注文リスト
+     */
     address[] public bidInfos;
 
     event ChangeMarkPrice(uint transactionCount, uint marketPrice, int diff, bool isNegative);
 
     /**
-    * 指定数のカードを所有しているユーザーのみ
-    */
+     * 指定数のカードを所有しているユーザーのみ
+     */
     modifier onlyOwn(uint32 _quantity) { require(balanceOf[msg.sender] >= _quantity); _; }
 
     /**
-    * コンストラクタ
-    */
+     * コンストラクタ
+     */
     function Card(bytes32 _name, uint32 _totalSupply, bytes32 _imageHash, address _author){
         name = _name;
         author = _author;
@@ -64,15 +64,15 @@ contract Card {
     }
 
     /**
-    * ownerのアドレスの配列取得
-    */
+     * ownerのアドレスの配列取得
+     */
     function getOwnerList() constant returns (address[]) {
         return ownerList;
     }
 
     /**
-    * カードを送る
-    */
+     * カードを送る
+     */
     function deal(address to, uint32 quantity) onlyOwn (quantity) {
         address from = msg.sender;
 
@@ -85,27 +85,46 @@ contract Card {
     }
 
     /**
-    * @dev カードの売り注文を作成
-    * @param _quantity 売りたい枚数
-    * @param _price １枚あたりの価格(wei)
-    */
+     * @dev カードの売り注文を作成
+     * @param _quantity 売りたい枚数
+     * @param _price １枚あたりの価格(wei)
+     */
     function ask(uint32 _quantity, uint128 _price) {
         askInfos[_price].push(AskInfo(msg.sender, _quantity));
         askInfoPrices.push(_price);
     }
 
     /**
-    * @dev 売り注文の金額のリストを返す
-    * @return （無効なもの含む）金額別売り注文の金額のリスト
-    */
+     * @dev 売り注文の金額のリストを返す
+     * @return （無効なもの含む）金額別売り注文の金額のリスト
+     */
     function getAskInfoPrices() constant returns (uint128[]){
         return askInfoPrices;
     }
 
     /**
-    * @dev 金額別売り注文の数を返す
-    * @return （無効なもの含む）金額別売り注文の数
-    */
+     * @dev 指定の金額の売り注文数を返す
+     * @param _price 金額
+     * @return 指定の金額の売り注文数
+     */
+    function readAskInfoCount(uint128 _price) constant returns (uint) {
+        return askInfos[_price].length;
+    }
+
+    /**
+     * @dev 指定の金額の売り注文データを返す
+     * @param _price 金額
+     * @param idx 要素番号
+     * @return 指定の金額の売り注文データ
+     */
+    function readAskInfo(uint128 _price, uint idx) constant returns(address from, uint32 quantity) {
+        return(askInfos[_price]);
+    }
+
+    /**
+     * @dev 金額別売り注文の数を返す
+     * @return （無効なもの含む）金額別売り注文の数
+     */
     function getAskInfoPricesCount() constant returns (uint){
         return askInfoPrices.length;
     }
@@ -179,17 +198,17 @@ contract Card {
     }
 
     /**
-    *  買い注文リストの要素数を返す
-    */
+     *  買い注文リストの要素数を返す
+     */
     function getBidInfosCount() constant returns (uint){
         return bidInfos.length;
     }
 
     /**
-    * 買い注文作成
-    * @param _quantity 枚数
-    * @param _etherPrice 購入額
-    */
+     * 買い注文作成
+     * @param _quantity 枚数
+     * @param _etherPrice 購入額
+     */
     function bid(uint16 _quantity, uint256 _etherPrice) payable {
         //TODO:本番ではetherではなくweiを引数に渡す
         uint256 weiPrice = _etherPrice * 1 ether;
@@ -200,10 +219,10 @@ contract Card {
     }
 
     /**
-    * 買い注文に対して売る.
-    * @param idx BidInfoのインデックス
-    * @param quantity 枚数
-    */
+     * 買い注文に対して売る.
+     * @param idx BidInfoのインデックス
+     * @param quantity 枚数
+     */
     function acceptBid(uint idx, uint16 quantity) payable {
         address seller = msg.sender;
         BidInfo bidInfo = BidInfo(bidInfos[idx]);
@@ -221,9 +240,9 @@ contract Card {
     }
 
     /**
-    * カードの価値を計算し出力
-    * @param price 1枚あたりの取引額(wei)
-    */
+     * カードの価値を計算し出力
+     * @param price 1枚あたりの取引額(wei)
+     */
     function calcPrice(uint price) private {
         // 取引額の算出
         totalPrice += price;
