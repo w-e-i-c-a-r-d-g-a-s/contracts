@@ -117,8 +117,8 @@ contract Card {
      * @param idx 要素番号
      * @return 指定の金額の売り注文データ
      */
-    function readAskInfo(uint128 _price, uint idx) constant returns(address from, uint32 quantity) {
-        return(askInfos[_price]);
+    function readAskInfo(uint128 _price, uint idx) constant returns (address from, uint32 quantity) {
+        return (askInfos[_price][idx].from, askInfos[_price][idx].quantity);
     }
 
     /**
