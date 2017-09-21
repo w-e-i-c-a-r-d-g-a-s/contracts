@@ -37,6 +37,7 @@ contract Card {
         uint32 quantity;
     }
     mapping(bytes16 => AskInfo[]) public askInfos;
+    mapping(bytes16 => bool) public existAskInfos;
     bytes16[] private askInfoPrices;
 
     /**
@@ -44,7 +45,7 @@ contract Card {
      */
     address[] public bidInfos;
 
-    event ChangeMarkPrice(uint transactionCount, uint marketPrice, int diff, bool isNegative);
+    event ChangeMarkPrice(uint _transactionCount, uint marketPrice, int diff, bool isNegative);
 
     /**
      * 指定数のカードを所有しているユーザーのみ
@@ -90,8 +91,20 @@ contract Card {
      * @param _price １枚あたりの価格(wei)
      */
     function ask(uint32 _quantity, uint128 _price) {
-        askInfos[bytes16(_price)].push(AskInfo(msg.sender, _quantity));
-        askInfoPrices.push(bytes16(_price));
+        bytes16 _key = bytes16(_price);
+        if(!hasPriceKey(_key)){
+          askInfoPrices.push(_key);
+          existAskInfos[_key] = true;
+        }
+        askInfos[_key].push(AskInfo(msg.sender, _quantity));
+    }
+
+    /**
+     * 価格キーが存在するかどうか
+     * @param _key 金額をハッシュ化したキー
+     */
+    function hasPriceKey(bytes16 _key) private returns (bool) {
+        return existAskInfos[_key];
     }
 
     /**
