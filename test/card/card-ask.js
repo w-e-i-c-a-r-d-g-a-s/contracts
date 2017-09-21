@@ -18,6 +18,12 @@ contract('Card#Ask', (accounts) => {
     // 売り注文が増える
     const num1 = await card.getAskInfoPricesCount.call();
     assert.equal(num1.toNumber(), 1);
+    const askInfoPrices = await card.getAskInfoPrices.call();
+    // bytes16が保存されている
+    assert.equal(
+      askInfoPrices[0],
+      '0x000000000000000000000000000003e8'
+    );
   });
 
   // 売り注文発行したときの売り注文のデータが正しいか
@@ -27,11 +33,15 @@ contract('Card#Ask', (accounts) => {
     await card.ask(10, toWei(0.1));
     // 生成された売り注文をチェック
     const askInfoPrices = await card.getAskInfoPrices.call();
+    assert.equal(
+      askInfoPrices[0],
+      '0x0000000000000000016345785d8a0000'
+    );
     const askInfo = await card.askInfos.call(askInfoPrices[0], 0);
     const [ from, quantity ] = askInfo;
     assert.equal(from, accounts[0]);
     assert.equal(quantity.toNumber(), 10);
-    assert.equal(web3.toDecimal(askInfoPrices[0]), toWei(0.1));
+    assert.equal(web3.toHex(askInfoPrices[0]), toWei(0.1));
   });
 
   // 同じ金額の売り注文を複数発行したときの売り注文のデータが正しいか
