@@ -14,7 +14,7 @@ contract('Card#Ask', (accounts) => {
     // 売り注文は0
     assert.equal(num.toNumber(), 0);
     // 売り注文を発行
-    await card.ask(10, 1000);
+    await card.ask(1, 1);
     // 売り注文が増える
     const num1 = await card.getAskInfoPricesCount.call();
     assert.equal(num1.toNumber(), 1);
@@ -22,8 +22,12 @@ contract('Card#Ask', (accounts) => {
     // bytes16が保存されている
     assert.equal(
       askInfoPrices[0],
-      '0x000000000000000000000000000003e8'
+      '0x00000000000000000000000000000001'
     );
+    // 同一金額で売り注文を再発行してもキーの数は変わらないこと
+    await card.ask(1, 1);
+    const aiPC = await card.getAskInfoPricesCount.call();
+    assert.equal(aiPC.toNumber(), 1);
   });
 
   // 売り注文発行したときの売り注文のデータが正しいか
