@@ -37,13 +37,13 @@ contract Card {
         uint32 quantity;
     }
     mapping(bytes16 => AskInfo[]) public askInfos;
-    mapping(bytes16 => bool) public existAskInfos;
+    mapping(bytes16 => bool) private existAskInfos;
     bytes16[] private askInfoPrices;
 
-    /**
-     * 買い注文リスト
-     */
-    address[] public bidInfos;
+    // event puts_s(string s);
+    // event puts_u(uint u);
+    // event puts_a(address a);
+    // event puts_b16(bytes16 b);
 
     event ChangeMarkPrice(uint _transactionCount, uint marketPrice, int diff, bool isNegative);
 
@@ -211,54 +211,131 @@ contract Card {
     }
 
     /**
-     *  買い注文リストの要素数を返す
+     * 買い注文リスト
      */
-    function getBidInfosCount() constant returns (uint){
-        return bidInfos.length;
-    }
+    // address[] public bidInfos;
+    mapping(bytes16 => address) public bidInfos;
+    mapping(bytes16 => bool) private existBidInfos;
+    bytes16[] private bidInfoPrices;
+
+    event D(uint x);
 
     /**
      * 買い注文作成
      * @param _quantity 枚数
-     * @param _etherPrice 購入額
+     * @param _price 購入額(wei)
      */
-    function bid(uint16 _quantity, uint256 _etherPrice) payable {
-        //TODO:本番ではetherではなくweiを引数に渡す
-        uint256 weiPrice = _etherPrice * 1 ether;
-        require(msg.value == _quantity * weiPrice);
-        BidInfo bidInfo = new BidInfo(msg.sender, _quantity, weiPrice);
-        bidInfo.transfer(msg.value);
-        bidInfos.push(address(bidInfo));
+    function bid(uint16 _quantity, uint128 _price) payable {
+        require(msg.value == _quantity * _price);
+
+        bytes16 _key = bytes16(_price);
+        if(hasBidPriceKey(_key)){
+            BidInfo _bidInfo = BidInfo(bidInfos[_key]);
+            _bidInfo.transfer(msg.value);
+            _bidInfo.add(msg.sender, _quantity);
+        }else{
+            BidInfo bidInfo = new BidInfo(msg.sender, _quantity, _price);
+            bidInfo.transfer(msg.value);
+            bidInfos[_key] = address(bidInfo);
+            bidInfoPrices.push(_key);
+            existBidInfos[_key] = true;
+        }
+    }
+
+    function hasBidPriceKey(bytes16 _key) private returns (bool) {
+        return existBidInfos[_key];
     }
 
     /**
-     * 買い注文に対して売る.
-     * @param idx BidInfoのインデックス
-     * @param quantity 枚数
+     *  買い注文リストの要素数を返す
      */
-    function acceptBid(uint idx, uint16 quantity) payable {
+    function getBidInfosCount() constant returns (uint){
+        return bidInfoPrices.length;
+    }
+
+    /**
+     * @dev 買い注文の金額のリストを返す
+     * @return （無効なもの含む）金額別売り注文の金額のリスト
+     */
+    function getBidInfoPrices() constant returns (bytes16[]){
+        return bidInfoPrices;
+    }
+
+
+    /**
+     * 買い注文に対して売る.
+     * @param _price BidInfoの価格
+     * @param _quantity 枚数
+     */
+    function acceptBid(uint128 _price, uint32 _quantity) payable {
+        bytes16 _key = bytes16(_price);
+
+        BidInfo bidInfo = BidInfo(bidInfos[_key]);
+        // TODO bidInfoがない場合
+
         address seller = msg.sender;
-        BidInfo bidInfo = BidInfo(bidInfos[idx]);
-        address buyer = bidInfo.buyer();
-        require(balanceOf[seller] >= quantity);
-        bidInfo.accept(seller, quantity);
-        balanceOf[seller] = balanceOf[seller] - quantity;
-        balanceOf[buyer] = balanceOf[buyer] + quantity;
-        if (!isAlreadyOwner(buyer)) {
-            // 初オーナー
-            ownerList.push(buyer);
+        // 売る人がカードをもっていない場合はエラー
+        require(balanceOf[seller] >= _quantity);
+
+        uint bidInfoCount = bidInfo.getBidInfoPropsCount();
+        for(uint i = 0; i < bidInfoCount; i++){
+            var (buyer, quantity) = bidInfo.getBidInfoProps(i);
+            // TODO deleteしても古いデータがのこる
+            if(quantity == 0){
+                continue;
+            }
+
+            uint32 boughtNum = 0;
+            if(quantity > _quantity){
+                // 一部買う
+                boughtNum = _quantity;
+            }else{
+                // 全部買う
+                boughtNum = quantity;
+            }
+            _quantity -= boughtNum;
+
+            // sellerへ購入金額を送付
+            bidInfo.transfer(seller, boughtNum);
+
+            balanceOf[seller] -= boughtNum;
+            balanceOf[buyer] += boughtNum;
+            quantity -= boughtNum;
+
+            // 初オーナーとなるaddressを登録
+            if (!isAlreadyOwner(buyer)) {
+                ownerList.push(buyer);
+            }
+
+            // deleteしてもstructは残る
+            if(quantity == 0){
+                bidInfo.deleteBidInfoProps(i);
+            }else{
+                // 在庫有り
+                bidInfo.updateBidInfoProps(i, quantity);
+            }
+            // すべて支払った場合終了
+            if(_quantity == 0){
+                break;
+            }
         }
+
+        // 売却枚数がのこる場合は失敗
+        if(_quantity != 0){
+            revert();
+        }
+
         // 時価の算出
-        calcPrice(bidInfo.price());
+        calcPrice(_price);
     }
 
     /**
      * カードの価値を計算し出力
-     * @param price 1枚あたりの取引額(wei)
+     * @param _price 1枚あたりの取引額(wei)
      */
-    function calcPrice(uint price) private {
+    function calcPrice(uint _price) private {
         // 取引額の算出
-        totalPrice += price;
+        totalPrice += _price;
         transactionCount++;
         uint marketPrice = totalPrice / transactionCount;
         int diff = int(marketPrice - currentMarketPrice);

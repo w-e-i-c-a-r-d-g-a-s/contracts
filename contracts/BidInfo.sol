@@ -4,20 +4,20 @@ pragma solidity ^0.4.13;
  * 買い注文のContract
  */
 contract BidInfo {
-    address public buyer;
-    uint public value;
-    uint16 public quantity;
     uint public price; // weiで指定
 
-    bool public ended;
+    bool public ended; // 現状未使用
 
-    event Debug_i(uint);
+    // 購入者と数量の構造体
+    struct BidInfoProp {
+        address buyer;
+        uint32 quantity;
+    }
+    BidInfoProp[] public bidInfoProps;
 
-    function BidInfo(address _buyer, uint16 _quantity, uint256 _price) payable {
-        buyer = _buyer;
-        quantity = _quantity;
+    function BidInfo(address _buyer, uint32 _quantity, uint128 _price) payable {
         price = _price;
-        value = quantity * price;
+        add(_buyer, _quantity);
     }
 
     /**
@@ -26,21 +26,53 @@ contract BidInfo {
     function() payable {}
 
     /**
-     * 販売.
+     * （同一金額の）新たな売り注文を追加
+     * @param _buyer 購入者
+     * @param _quantity 数量
      */
-    function accept(address seller, uint16 _quantity) payable {
-        require(!ended);
-        //提示カード枚数以下
-        require(quantity >= _quantity);
-        //送付
-        seller.transfer(price * _quantity);
-        value = value - price * _quantity;
+    function add(address _buyer, uint32 _quantity) {
+        bidInfoProps.push(BidInfoProp(_buyer, _quantity));
+    }
 
-        quantity -= _quantity;
-        //TODO:綺麗に割り切れない場合の救済
-        if (value == 0) {
-            ended = true;
-        }
+    /**
+     * bidInfoPropsの要素数を返す
+     * @return bidInfoPropsの要素数
+     */
+    function getBidInfoPropsCount() constant returns (uint){
+        return bidInfoProps.length;
+    }
+
+    /**
+     * bidInfoPropの要素を返す
+     */
+    function getBidInfoProps(uint idx) constant returns (address, uint32){
+        BidInfoProp storage b = bidInfoProps[idx];
+        return (b.buyer, b.quantity);
+    }
+
+    /**
+     * bidInfoPropのquantityを更新
+     * @param idx bidInfoPropsの要素番号
+     * @param _quantity 更新する数量
+     */
+    function updateBidInfoProps(uint idx, uint32 _quantity) {
+        bidInfoProps[idx].quantity = _quantity;
+    }
+
+    /**
+     * bidInfoPropの要素を削除
+     */
+    function deleteBidInfoProps(uint idx) {
+        delete bidInfoProps[idx];
+    }
+
+    /**
+     * このcontract内のお金を送金する
+     * @param _seller 売却者
+     * @param _quantity 数量
+     */
+    function transfer(address _seller, uint32 _quantity) payable {
+        _seller.transfer(price * _quantity);
     }
 
     /**
@@ -48,10 +80,13 @@ contract BidInfo {
      * 作成者のみ終了可能.
      */
     function close() {
-        require(msg.sender == buyer);
-        buyer.transfer(value);
-        value = 0;
-        ended = true;
+        for(uint i = 0; i < bidInfoProps.length; i++){
+            BidInfoProp storage b = bidInfoProps[i];
+            if(msg.sender == b.buyer){
+                b.buyer.transfer(price * b.quantity);
+                deleteBidInfoProps(i);
+            }
+        }
     }
 
 }
