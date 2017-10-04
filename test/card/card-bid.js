@@ -168,6 +168,31 @@ contract('Card#Bid', (accounts) => {
     await expectThrow(card.bid(1, 1, { from: accounts[1], value: 2 }));
   });
 
+  // 買い注文を取得
+  it("testing 'getBidInfo' OK", async () => {
+    const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+    const buyerBalance =  web3.eth.getBalance(accounts[1]);
+    // 買い注文を作成
+    await card.bid(1, 1, { from: accounts[1], value: 1 });
+    await card.bid(1, 1, { from: accounts[1], value: 1 });
+    await card.bid(1, toWei(0.5), { from: accounts[1], value: toWei(0.5) });
+    await card.bid(1, toWei(0.005), { from: accounts[1], value: toWei(0.005) });
+
+    const bidInfoPrices = await card.getBidInfoPrices.call();
+    // getBidInfoで取得するアドレスが正しいか
+    let bidInfoAddr = await card.bidInfos.call(bidInfoPrices[0]);
+    let bidInfo = await card.getBidInfo(1);
+    assert.equal(bidInfoAddr, bidInfo);
+
+    bidInfoAddr = await card.bidInfos.call(bidInfoPrices[1]);
+    bidInfo = await card.getBidInfo(toWei(0.5));
+    assert.equal(bidInfoAddr, bidInfo);
+
+    bidInfoAddr = await card.bidInfos.call(bidInfoPrices[2]);
+    bidInfo = await card.getBidInfo(toWei(0.005));
+    assert.equal(bidInfoAddr, bidInfo);
+  });
+
   // 買い注文に対して売る
   it("testing 'acceptBid' OK", async () => {
     const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);

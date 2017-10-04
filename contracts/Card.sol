@@ -261,6 +261,14 @@ contract Card {
         return bidInfoPrices;
     }
 
+    /**
+     * @dev BidInfoのアドレスを返す
+     * @return （無効なもの含む）金額別売り注文の金額のリスト
+     */
+    function getBidInfo(uint128 _price) constant returns (address){
+        bytes16 _key = bytes16(_price);
+        return bidInfos[_key];
+    }
 
     /**
      * 買い注文に対して売る.
