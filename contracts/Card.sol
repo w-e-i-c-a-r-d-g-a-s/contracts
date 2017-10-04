@@ -168,9 +168,8 @@ contract Card {
      */
     function acceptAsk(uint128 _price, uint32 _quantity) payable {
         AskInfo[] storage _askInfos = askInfos[bytes16(_price)];
-        if(_askInfos.length == 0){
-            revert();
-        }
+        require(_askInfos.length > 0);
+
         address to = msg.sender;
         for(uint i = 0; i < _askInfos.length; i++){
             AskInfo storage _askInfo = _askInfos[i];
@@ -206,9 +205,7 @@ contract Card {
         }
 
         // balanceが残っている場合は失敗
-        if(this.balance != 0){
-            revert();
-        }
+        require(this.balance == 0);
 
         if (!isAlreadyOwner(to)) {
             // 初オーナー
@@ -294,7 +291,7 @@ contract Card {
      * @param _price BidInfoの価格
      * @param _quantity 枚数
      */
-    function acceptBid(uint128 _price, uint32 _quantity) payable {
+    function acceptBid(uint128 _price, uint32 _quantity) {
         bytes16 _key = bytes16(_price);
 
         BidInfo bidInfo = BidInfo(bidInfos[_key]);
@@ -348,9 +345,7 @@ contract Card {
         }
 
         // 売却枚数がのこる場合は失敗
-        if(_quantity != 0){
-            revert();
-        }
+        require(_quantity == 0);
 
         // 時価の算出
         calcPrice(_price);
