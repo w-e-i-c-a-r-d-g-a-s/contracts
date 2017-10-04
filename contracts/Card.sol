@@ -100,6 +100,25 @@ contract Card {
     }
 
     /**
+     * 売り注文を終了する
+     */
+    function closeAsk(uint128 _price) {
+        AskInfo[] storage _askInfos = askInfos[bytes16(_price)];
+        for(uint i = 0; i < _askInfos.length; i++){
+            AskInfo storage _askInfo = _askInfos[i];
+            // TODO deleteしても古いデータがのこる
+            if(_askInfo.quantity == 0){
+                continue;
+            }
+
+            address from = _askInfo.from;
+            if(from == msg.sender){
+                delete _askInfos[i];
+            }
+        }
+    }
+
+    /**
      * 価格キーが存在するかどうか
      * @param _key 金額をハッシュ化したキー
      */

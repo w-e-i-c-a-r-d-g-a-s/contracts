@@ -335,5 +335,98 @@ contract('Card#Ask', (accounts) => {
     // 枚数オーバーの場合balanceが0にならずrevertされる
     await expectThrow(card.acceptAsk(toWei(0.1), 16, {from: accounts[1], value: toWei(1.6)}));
   });
+
+  // 売り注文を取り消す
+  it("testing 'closeAsk'", async () => {
+    const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+    // 売り注文を発行 10枚 1枚あたり0.1ETH
+    await card.ask(10, toWei(0.1));
+    // 売り注文がある
+    let num = await card.getAskInfoPricesCount.call();
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文を取り消す
+    await card.closeAsk(toWei(0.1));
+    num = await card.getAskInfoPricesCount.call();
+    // 配列の数は変わらない
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文が削除されている
+    const askInfoPrices = await card.getAskInfoPrices.call();
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
+    assert.equal(askInfo1[0], 0);
+    assert.equal(askInfo1[1], 0);
+  });
+
+  // 売り注文を取り消す
+  // 同一金額に複数の売り注文があり、一報を取り消した場合
+  it("testing 'closeAsk' OK2", async () => {
+    const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+    // accounts1に10枚譲渡
+    await card.deal(accounts[1], 10);
+    // 売り注文を発行 10枚 1枚あたり0.1ETH
+    await card.ask(10, toWei(0.1));
+    await card.ask(10, toWei(0.1), { from: accounts[1] });
+    // 売り注文がある
+    let num = await card.getAskInfoPricesCount.call();
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文を取り消す
+    await card.closeAsk(toWei(0.1));
+    num = await card.getAskInfoPricesCount.call();
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文の１つめが削除されている
+    const askInfoPrices = await card.getAskInfoPrices.call();
+    const askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
+    assert.equal(askInfo1[0], 0);
+    assert.equal(askInfo1[1], 0);
+
+    const askInfo2 = await card.askInfos.call(askInfoPrices[0], 1);
+    assert.equal(askInfo2[0], accounts[1]);
+    assert.equal(askInfo2[1], 10);
+  });
+
+  // 売り注文を取り消す
+  // 同一金額に複数の売り注文があり、その内同一ユーザのものが複数ある
+  it("testing 'closeAsk' OK3", async () => {
+    const card = await Card.new('cardName', 100, 'imageHash123', accounts[0]);
+    // accounts1に10枚譲渡
+    await card.deal(accounts[1], 10);
+    // 売り注文を発行 10枚 1枚あたり0.1ETH
+    await card.ask(10, toWei(0.1));
+    await card.ask(10, toWei(0.1), { from: accounts[1] });
+    await card.ask(10, toWei(0.1));
+    // 売り注文がある
+    let num = await card.getAskInfoPricesCount.call();
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文を取り消す
+    await card.closeAsk(toWei(0.1));
+    num = await card.getAskInfoPricesCount.call();
+    assert.equal(num.toNumber(), 1);
+
+    // 売り注文の１つめが削除されている
+    const askInfoPrices = await card.getAskInfoPrices.call();
+    // account0のもののみ削除されている
+    let askInfo1 = await card.askInfos.call(askInfoPrices[0], 0);
+    assert.equal(askInfo1[0], 0);
+    assert.equal(askInfo1[1], 0);
+
+    let askInfo2 = await card.askInfos.call(askInfoPrices[0], 1);
+    assert.equal(askInfo2[0], accounts[1]);
+    assert.equal(askInfo2[1], 10);
+
+    askInfo1 = await card.askInfos.call(askInfoPrices[0], 2);
+    assert.equal(askInfo1[0], 0);
+    assert.equal(askInfo1[1], 0);
+
+    // accounts1も削除
+    await card.closeAsk(toWei(0.1), { from: accounts[1] });
+    askInfo2 = await card.askInfos.call(askInfoPrices[0], 1);
+    assert.equal(askInfo2[0], 0);
+    assert.equal(askInfo2[1], 0);
+  });
+
 });
 
